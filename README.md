@@ -2,6 +2,8 @@
 
 Control your UPLIFT or Jiecang-based standing desk via Bluetooth Low Energy (BLE).
 
+![Web Interface Screenshot](screenshot.png)
+
 ## Features
 
 - **Command Line Control** - Simple `sit` and `stand` commands

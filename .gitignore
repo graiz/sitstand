@@ -21,10 +21,11 @@ build/
 .desk_address
 .desk_log
 
-# Images (development snapshots)
+# Images (development snapshots, but allow screenshot.png)
 *.jpg
 *.jpeg
 *.png
+!screenshot.png
 
 # Claude settings (local only)
 .claude/settings.local.json
