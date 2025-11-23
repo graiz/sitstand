@@ -1,0 +1,6 @@
+#!/usr/bin/env python3
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent))
+from desk_control import main
+exit(main('stand'))

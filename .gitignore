@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+*.egg-info/
+dist/
+build/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Project specific
+.desk_address
+.desk_log
+
+# Images (development snapshots)
+*.jpg
+*.jpeg
+*.png
+
+# Claude settings (local only)
+.claude/settings.local.json
