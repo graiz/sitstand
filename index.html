@@ -1,0 +1,1260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Uplift Desk Controller</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --border: #30363d;
+            --text-primary: #f0f6fc;
+            --text-secondary: #c9d1d9;
+            --text-muted: #8b949e;
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        .app-layout {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 32px;
+        }
+
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: var(--accent);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .logo-text {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        /* Connection Status */
+        .status-section {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 24px;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-muted);
+        }
+
+        .status-dot.connected {
+            background: var(--success);
+            box-shadow: 0 0 8px var(--success);
+        }
+
+        .status-text {
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        /* Height Display */
+        .height-display {
+            text-align: center;
+            padding: 24px 0;
+            margin-bottom: 24px;
+        }
+
+        .height-value {
+            font-size: 64px;
+            font-weight: 700;
+            letter-spacing: -2px;
+            color: var(--text-primary);
+        }
+
+        .height-label {
+            font-size: 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 4px;
+        }
+
+        /* Buttons */
+        .button-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .button-row {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 14px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: var(--accent-hover);
+        }
+
+        .btn-secondary {
+            background: var(--bg-primary);
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: var(--border);
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            background: #dc2626;
+        }
+
+        .btn-connect {
+            background: var(--bg-primary);
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-connect:hover:not(:disabled) {
+            background: var(--border);
+        }
+
+        .btn-connect.connected {
+            background: var(--success);
+            color: white;
+            border: none;
+        }
+
+        .btn-connect.connected:hover:not(:disabled) {
+            background: #16a34a;
+        }
+
+        /* Variant Badge */
+        .variant-badge {
+            margin-top: auto;
+            padding: 8px 12px;
+            background: var(--bg-primary);
+            border-radius: 6px;
+            font-size: 11px;
+            color: var(--text-muted);
+            text-align: center;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            padding: 24px;
+            overflow-y: auto;
+        }
+
+        /* Main layout - center + right columns */
+        .main-layout {
+            display: flex;
+            gap: 20px;
+        }
+
+        /* Center Column */
+        .center-column {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        /* 3D Desk Visualization */
+        .desk-3d-card {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .desk-3d-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .desk-3d-title {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .desk-3d-hint {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .desk-3d-container {
+            height: 280px;
+            border-radius: 8px;
+            overflow: hidden;
+            background: linear-gradient(180deg, #1a1f2e 0%, #0d1117 100%);
+        }
+
+        .desk-3d-container canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Stats Row */
+        .stats-row {
+            display: flex;
+            gap: 12px;
+        }
+
+        .stat-card {
+            flex: 1;
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 16px;
+            border: 1px solid var(--border);
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--text-primary);
+            letter-spacing: -1px;
+        }
+
+        /* Activity Card */
+        .activity-card {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            flex: 1;
+        }
+
+        .activity-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .activity-title {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .activity-list {
+            padding: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .activity-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 12px;
+            border-radius: 6px;
+        }
+
+        .activity-item:hover {
+            background: var(--bg-primary);
+        }
+
+        .activity-time {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .activity-badge {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 4px;
+            text-transform: uppercase;
+        }
+
+        .activity-badge.sit {
+            background: rgba(59, 130, 246, 0.2);
+            color: var(--accent);
+        }
+
+        .activity-badge.stand {
+            background: rgba(34, 197, 94, 0.2);
+            color: var(--success);
+        }
+
+        .empty-state {
+            color: var(--text-muted);
+            font-size: 13px;
+            padding: 32px;
+            text-align: center;
+        }
+
+        /* Right Column - charts */
+        .right-column {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .card {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+
+        .card-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .card-title {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .chart-card {
+            flex: 1;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chart-container-small {
+            flex: 1;
+            min-height: 150px;
+        }
+
+        /* Browser Warning */
+        .browser-warning {
+            display: none;
+            background: var(--warning);
+            color: #000;
+            padding: 12px 20px;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        .browser-warning.show {
+            display: block;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .app-layout {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                width: 100%;
+                height: auto;
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+            }
+
+            .main-layout {
+                flex-direction: column;
+            }
+
+            .center-column,
+            .right-column {
+                flex: none;
+                width: 100%;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .stats-row {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                padding: 16px;
+            }
+
+            .main-content {
+                padding: 16px;
+            }
+
+            .height-value {
+                font-size: 48px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Browser Warning -->
+    <div class="browser-warning" id="browserWarning">
+        Web Bluetooth is not supported in this browser. Please use Chrome, Edge, or Opera.
+    </div>
+
+    <div class="app-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo">
+                <div class="logo-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                        <path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v3M12 14v3M16 14v3"/>
+                    </svg>
+                </div>
+                <span class="logo-text">Desk Control</span>
+            </div>
+
+            <div class="status-section">
+                <div class="status-indicator">
+                    <div class="status-dot" id="statusDot"></div>
+                    <span class="status-text" id="statusText">Disconnected</span>
+                </div>
+            </div>
+
+            <div class="height-display">
+                <div class="height-value" id="height">--</div>
+                <div class="height-label">Current Height</div>
+            </div>
+
+            <div class="button-grid">
+                <div class="button-row">
+                    <button class="btn btn-primary" id="sitBtn" onclick="sendCommand('sit')">Sit</button>
+                    <button class="btn btn-primary" id="standBtn" onclick="sendCommand('stand')">Stand</button>
+                </div>
+                <div class="button-row">
+                    <button class="btn btn-secondary" id="upBtn" onclick="sendCommand('up')" disabled>Up</button>
+                    <button class="btn btn-secondary" id="downBtn" onclick="sendCommand('down')" disabled>Down</button>
+                </div>
+                <button class="btn btn-danger" id="stopBtn" onclick="sendCommand('stop')" disabled>Stop</button>
+                <div class="button-row">
+                    <button class="btn btn-secondary" id="mem3Btn" onclick="sendCommand('preset3')" disabled>Memory 3</button>
+                    <button class="btn btn-secondary" id="mem4Btn" onclick="sendCommand('preset4')" disabled>Memory 4</button>
+                </div>
+                <button class="btn btn-connect" id="connectBtn" onclick="toggleConnection()">Connect</button>
+            </div>
+
+            <div class="variant-badge" id="variantBadge">Web Bluetooth</div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="main-layout">
+                <!-- Center Column -->
+                <div class="center-column">
+                    <div class="desk-3d-card">
+                        <div class="desk-3d-header">
+                            <span class="desk-3d-title">Desk Preview</span>
+                            <span class="desk-3d-hint">Drag to rotate, scroll to zoom</span>
+                        </div>
+                        <div class="desk-3d-container" id="desk3dContainer"></div>
+                    </div>
+
+                    <div class="stats-row">
+                        <div class="stat-card">
+                            <div class="stat-label">Sit Today</div>
+                            <div class="stat-value" id="todaySit">0</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Stand Today</div>
+                            <div class="stat-value" id="todayStand">0</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Transitions</div>
+                            <div class="stat-value" id="todayTransitions">0</div>
+                        </div>
+                    </div>
+
+                    <div class="activity-card">
+                        <div class="activity-header">
+                            <span class="activity-title">Recent Activity</span>
+                        </div>
+                        <div class="activity-list" id="activityList">
+                            <div class="empty-state">No activity recorded</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column -->
+                <div class="right-column">
+                    <div class="card chart-card">
+                        <div class="card-header">
+                            <span class="card-title">Daily Activity</span>
+                        </div>
+                        <div class="chart-container-small">
+                            <canvas id="dailyChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="card chart-card">
+                        <div class="card-header">
+                            <span class="card-title">Hourly Distribution</span>
+                        </div>
+                        <div class="chart-container-small">
+                            <canvas id="hourlyChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // ============================================
+        // BLE Configuration
+        // ============================================
+        const DESK_SERVICE_UUIDS = [
+            '0000ff00-0000-1000-8000-00805f9b34fb', // FF00
+            '0000fe60-0000-1000-8000-00805f9b34fb', // FE60
+            '000000ff-0000-1000-8000-00805f9b34fb', // 00FF
+            '0000ff12-0000-1000-8000-00805f9b34fb', // FF12
+        ];
+
+        const DESK_CONFIGS = {
+            '0000ff00-0000-1000-8000-00805f9b34fb': {
+                name: 'JIECANG_0xFF00',
+                input: '0000ff01-0000-1000-8000-00805f9b34fb',
+                output: '0000ff02-0000-1000-8000-00805f9b34fb'
+            },
+            '0000fe60-0000-1000-8000-00805f9b34fb': {
+                name: 'JIECANG_0xFE60',
+                input: '0000fe61-0000-1000-8000-00805f9b34fb',
+                output: '0000fe62-0000-1000-8000-00805f9b34fb'
+            },
+            '0000ff12-0000-1000-8000-00805f9b34fb': {
+                name: 'JIECANG_0xFF12',
+                input: '0000ff01-0000-1000-8000-00805f9b34fb',
+                output: '0000ff02-0000-1000-8000-00805f9b34fb'
+            }
+        };
+
+        // Height calibration (from previous calibration)
+        const HEIGHT_SCALE_FACTOR = 100.7874;
+        const HEIGHT_BASE_OFFSET_MM = 650.09;
+
+        // Command opcodes
+        const OPCODES = {
+            wake: 0x00,
+            up: 0x01,
+            down: 0x02,
+            sit: 0x05,
+            stand: 0x06,
+            preset3: 0x07,
+            preset4: 0x08,
+            stop: 0x2B
+        };
+
+        // ============================================
+        // State
+        // ============================================
+        let bleDevice = null;
+        let bleServer = null;
+        let inputChar = null;
+        let outputChar = null;
+        let currentConfig = null;
+        let connected = false;
+        let currentHeight = null;
+        let lastPosition = null;
+
+        // Charts
+        let dailyChart = null;
+        let hourlyChart = null;
+
+        // Three.js
+        let scene, camera, renderer, deskGroup, controls;
+        let deskTop, leftLeg, rightLeg;
+        let targetHeight = 0.5;
+        let currentDeskHeight = 0.5;
+        let lastInteractionTime = 0;
+        let isUserInteracting = false;
+        const MIN_HEIGHT_INCHES = 25;
+        const MAX_HEIGHT_INCHES = 50;
+        const AUTO_ROTATE_DELAY = 2000;
+
+        // ============================================
+        // IndexedDB for local storage
+        // ============================================
+        const DB_NAME = 'DeskControlDB';
+        const DB_VERSION = 1;
+        let db = null;
+
+        async function initDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+                request.onerror = () => reject(request.error);
+                request.onsuccess = () => {
+                    db = request.result;
+                    resolve(db);
+                };
+
+                request.onupgradeneeded = (event) => {
+                    const database = event.target.result;
+                    if (!database.objectStoreNames.contains('logs')) {
+                        const store = database.createObjectStore('logs', { keyPath: 'id', autoIncrement: true });
+                        store.createIndex('timestamp', 'timestamp', { unique: false });
+                        store.createIndex('date', 'date', { unique: false });
+                    }
+                };
+            });
+        }
+
+        async function logPosition(position) {
+            if (!db) return;
+
+            const now = new Date();
+            const entry = {
+                timestamp: now.toISOString(),
+                date: now.toISOString().split('T')[0],
+                position: position,
+                hour: now.getHours()
+            };
+
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction('logs', 'readwrite');
+                const store = tx.objectStore('logs');
+                const request = store.add(entry);
+                request.onsuccess = () => resolve();
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        async function getTodayLogs() {
+            if (!db) return [];
+
+            const today = new Date().toISOString().split('T')[0];
+
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction('logs', 'readonly');
+                const store = tx.objectStore('logs');
+                const index = store.index('date');
+                const request = index.getAll(today);
+                request.onsuccess = () => resolve(request.result || []);
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        async function getWeekLogs() {
+            if (!db) return [];
+
+            const now = new Date();
+            const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction('logs', 'readonly');
+                const store = tx.objectStore('logs');
+                const request = store.getAll();
+                request.onsuccess = () => {
+                    const logs = request.result || [];
+                    const filtered = logs.filter(log => new Date(log.timestamp) >= weekAgo);
+                    resolve(filtered);
+                };
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        // ============================================
+        // BLE Functions
+        // ============================================
+        function createCommandPacket(opcode, payload = []) {
+            const payloadLen = payload.length;
+            let checksum = (opcode + payloadLen) & 0xFF;
+            for (const b of payload) {
+                checksum = (checksum + b) & 0xFF;
+            }
+            return new Uint8Array([0xF1, 0xF1, opcode, payloadLen, ...payload, checksum, 0x7E]);
+        }
+
+        async function toggleConnection() {
+            if (connected) {
+                await disconnect();
+            } else {
+                await connect();
+            }
+        }
+
+        async function connect() {
+            try {
+                // Check Web Bluetooth support
+                if (!navigator.bluetooth) {
+                    alert('Web Bluetooth is not supported in this browser. Please use Chrome, Edge, or Opera.');
+                    return;
+                }
+
+                // Request device - user must select from browser dialog
+                bleDevice = await navigator.bluetooth.requestDevice({
+                    filters: [
+                        { services: DESK_SERVICE_UUIDS },
+                        { namePrefix: 'BLE Device' }
+                    ],
+                    optionalServices: DESK_SERVICE_UUIDS
+                });
+
+                bleDevice.addEventListener('gattserverdisconnected', onDisconnected);
+
+                // Connect to GATT server
+                bleServer = await bleDevice.gatt.connect();
+
+                // Find the desk service
+                for (const serviceUuid of DESK_SERVICE_UUIDS) {
+                    try {
+                        const service = await bleServer.getPrimaryService(serviceUuid);
+                        currentConfig = DESK_CONFIGS[serviceUuid];
+
+                        // Get characteristics
+                        inputChar = await service.getCharacteristic(currentConfig.input);
+                        outputChar = await service.getCharacteristic(currentConfig.output);
+
+                        // Subscribe to notifications
+                        await outputChar.startNotifications();
+                        outputChar.addEventListener('characteristicvaluechanged', handleNotification);
+
+                        // Send wake sequence
+                        await sendWakeSequence();
+
+                        connected = true;
+                        updateUI();
+
+                        document.getElementById('variantBadge').textContent = currentConfig.name;
+                        console.log('Connected to desk:', currentConfig.name);
+                        return;
+                    } catch (e) {
+                        // Try next service
+                        continue;
+                    }
+                }
+
+                throw new Error('Could not find desk service');
+
+            } catch (error) {
+                console.error('Connection failed:', error);
+                if (error.name !== 'NotFoundError') { // User cancelled
+                    alert('Failed to connect: ' + error.message);
+                }
+            }
+        }
+
+        async function disconnect() {
+            if (bleDevice && bleDevice.gatt.connected) {
+                bleDevice.gatt.disconnect();
+            }
+            onDisconnected();
+        }
+
+        function onDisconnected() {
+            connected = false;
+            bleDevice = null;
+            bleServer = null;
+            inputChar = null;
+            outputChar = null;
+            currentConfig = null;
+            currentHeight = null;
+            updateUI();
+        }
+
+        async function sendWakeSequence() {
+            const wakeCmd = createCommandPacket(OPCODES.wake);
+            for (let i = 0; i < 3; i++) {
+                try {
+                    await inputChar.writeValueWithoutResponse(wakeCmd);
+                } catch (e) {
+                    // Wake commands may fail
+                }
+                await new Promise(r => setTimeout(r, 100));
+            }
+        }
+
+        async function sendCommand(command) {
+            const opcode = OPCODES[command];
+            if (opcode === undefined) return;
+
+            // Auto-connect for sit/stand if not connected
+            if (!connected && (command === 'sit' || command === 'stand')) {
+                await connect();
+                if (!connected) return; // User cancelled or connection failed
+            }
+
+            if (!connected || !inputChar) return;
+
+            try {
+                // Send wake first
+                await sendWakeSequence();
+
+                // Send command
+                const packet = createCommandPacket(opcode);
+                await inputChar.writeValueWithoutResponse(packet);
+
+                // Send again for reliability
+                await new Promise(r => setTimeout(r, 150));
+                await inputChar.writeValueWithoutResponse(packet);
+
+                // Log position change for sit/stand
+                if (command === 'sit' || command === 'stand') {
+                    await logPosition(command);
+                    lastPosition = command;
+                    await updateStats();
+                }
+
+            } catch (error) {
+                console.error('Command failed:', error);
+            }
+        }
+
+        function handleNotification(event) {
+            const data = new Uint8Array(event.target.value.buffer);
+
+            if (data.length >= 8 && data[0] === 0xF2 && data[1] === 0xF2) {
+                const opcode = data[2];
+
+                if (opcode === 0x01) { // Height notification
+                    const rawValue = (data[5] << 8) | data[6];
+                    currentHeight = (rawValue / HEIGHT_SCALE_FACTOR) + HEIGHT_BASE_OFFSET_MM;
+
+                    const inches = (currentHeight / 25.4).toFixed(1);
+                    document.getElementById('height').textContent = `${inches}"`;
+                    updateDeskHeight(parseFloat(inches));
+                }
+            }
+        }
+
+        // ============================================
+        // UI Functions
+        // ============================================
+        function updateUI() {
+            const statusDot = document.getElementById('statusDot');
+            const statusText = document.getElementById('statusText');
+            const connectBtn = document.getElementById('connectBtn');
+
+            statusDot.className = `status-dot ${connected ? 'connected' : ''}`;
+            statusText.textContent = connected ? 'Connected' : 'Disconnected';
+
+            connectBtn.textContent = connected ? 'Disconnect' : 'Connect';
+            connectBtn.className = `btn btn-connect ${connected ? 'connected' : ''}`;
+
+            // Sit/Stand are always enabled (they auto-connect)
+            // Other buttons require connection
+            const connectRequiredButtons = ['upBtn', 'downBtn', 'stopBtn', 'mem3Btn', 'mem4Btn'];
+            connectRequiredButtons.forEach(id => {
+                document.getElementById(id).disabled = !connected;
+            });
+
+            if (!connected) {
+                document.getElementById('height').textContent = '--';
+            }
+        }
+
+        async function updateStats() {
+            try {
+                const todayLogs = await getTodayLogs();
+
+                let sitCount = 0;
+                let standCount = 0;
+
+                todayLogs.forEach(log => {
+                    if (log.position === 'sit') sitCount++;
+                    else if (log.position === 'stand') standCount++;
+                });
+
+                document.getElementById('todaySit').textContent = sitCount;
+                document.getElementById('todayStand').textContent = standCount;
+                document.getElementById('todayTransitions').textContent = sitCount + standCount;
+
+                // Update activity list
+                updateActivityList(todayLogs.slice(-10).reverse());
+
+                // Update charts
+                await updateCharts();
+
+            } catch (error) {
+                console.error('Failed to update stats:', error);
+            }
+        }
+
+        function updateActivityList(logs) {
+            const list = document.getElementById('activityList');
+
+            if (!logs || logs.length === 0) {
+                list.innerHTML = '<div class="empty-state">No activity recorded</div>';
+                return;
+            }
+
+            list.innerHTML = logs.map(log => {
+                const date = new Date(log.timestamp);
+                const time = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+                return `
+                    <div class="activity-item">
+                        <span class="activity-time">${time} - ${dateStr}</span>
+                        <span class="activity-badge ${log.position}">${log.position.toUpperCase()}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function updateCharts() {
+            const weekLogs = await getWeekLogs();
+
+            // Daily chart data
+            const dailyData = {};
+            const days = [];
+            for (let i = 6; i >= 0; i--) {
+                const date = new Date();
+                date.setDate(date.getDate() - i);
+                const key = date.toISOString().split('T')[0];
+                dailyData[key] = { sit: 0, stand: 0 };
+                days.push(date.toLocaleDateString('en-US', { weekday: 'short' }));
+            }
+
+            weekLogs.forEach(log => {
+                if (dailyData[log.date]) {
+                    if (log.position === 'sit') dailyData[log.date].sit++;
+                    else if (log.position === 'stand') dailyData[log.date].stand++;
+                }
+            });
+
+            const sitData = Object.values(dailyData).map(d => d.sit);
+            const standData = Object.values(dailyData).map(d => d.stand);
+
+            if (dailyChart) {
+                dailyChart.data.labels = days;
+                dailyChart.data.datasets[0].data = sitData;
+                dailyChart.data.datasets[1].data = standData;
+                dailyChart.update();
+            }
+
+            // Hourly chart data
+            const hourlyData = new Array(24).fill(0);
+            const todayLogs = await getTodayLogs();
+            todayLogs.forEach(log => {
+                if (log.hour !== undefined) {
+                    hourlyData[log.hour]++;
+                }
+            });
+
+            if (hourlyChart) {
+                hourlyChart.data.datasets[0].data = hourlyData;
+                hourlyChart.update();
+            }
+        }
+
+        function initCharts() {
+            const chartOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: { color: '#8b949e', boxWidth: 12, padding: 8, font: { size: 11 } }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { color: '#30363d' },
+                        ticks: { color: '#8b949e', font: { size: 10 } }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: '#30363d' },
+                        ticks: { color: '#8b949e', font: { size: 10 } }
+                    }
+                }
+            };
+
+            // Daily chart
+            const dailyCtx = document.getElementById('dailyChart').getContext('2d');
+            dailyChart = new Chart(dailyCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                    datasets: [
+                        {
+                            label: 'Sit',
+                            data: [0, 0, 0, 0, 0, 0, 0],
+                            backgroundColor: 'rgba(59, 130, 246, 0.8)'
+                        },
+                        {
+                            label: 'Stand',
+                            data: [0, 0, 0, 0, 0, 0, 0],
+                            backgroundColor: 'rgba(34, 197, 94, 0.8)'
+                        }
+                    ]
+                },
+                options: chartOptions
+            });
+
+            // Hourly chart
+            const hourlyCtx = document.getElementById('hourlyChart').getContext('2d');
+            hourlyChart = new Chart(hourlyCtx, {
+                type: 'line',
+                data: {
+                    labels: Array.from({ length: 24 }, (_, i) => `${i}:00`),
+                    datasets: [{
+                        label: 'Transitions',
+                        data: new Array(24).fill(0),
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    ...chartOptions,
+                    plugins: {
+                        ...chartOptions.plugins,
+                        legend: { display: false }
+                    }
+                }
+            });
+        }
+
+        // ============================================
+        // Three.js 3D Desk
+        // ============================================
+        function initDesk3D() {
+            const container = document.getElementById('desk3dContainer');
+            if (!container) return;
+
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+            camera.position.set(4, 3, 4);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(width, height);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setClearColor(0x000000, 0);
+            container.appendChild(renderer.domElement);
+
+            // OrbitControls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.enablePan = false;
+            controls.minDistance = 3;
+            controls.maxDistance = 10;
+            controls.maxPolarAngle = Math.PI / 2;
+            controls.target.set(0, 1.5, 0);
+            controls.autoRotate = true;
+            controls.autoRotateSpeed = 1.0;
+
+            controls.addEventListener('start', () => {
+                isUserInteracting = true;
+                controls.autoRotate = false;
+            });
+            controls.addEventListener('end', () => {
+                isUserInteracting = false;
+                lastInteractionTime = Date.now();
+            });
+
+            // Lighting
+            scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(5, 10, 5);
+            scene.add(dirLight);
+            const backLight = new THREE.DirectionalLight(0x3b82f6, 0.3);
+            backLight.position.set(-5, 5, -5);
+            scene.add(backLight);
+
+            // Desk group
+            deskGroup = new THREE.Group();
+
+            const deskTopMat = new THREE.MeshPhongMaterial({ color: 0x4a3728, shininess: 30 });
+            const legMat = new THREE.MeshPhongMaterial({ color: 0x2a2a2a, shininess: 50 });
+            const accentMat = new THREE.MeshPhongMaterial({ color: 0x3b82f6, shininess: 80 });
+
+            // Desk top
+            deskTop = new THREE.Mesh(new THREE.BoxGeometry(3, 0.08, 1.5), deskTopMat);
+            deskTop.position.y = 2;
+            deskGroup.add(deskTop);
+
+            // Accent edge
+            const frontEdge = new THREE.Mesh(new THREE.BoxGeometry(3.02, 0.02, 0.02), accentMat);
+            frontEdge.position.set(0, -0.03, 0.75);
+            deskTop.add(frontEdge);
+
+            // Legs
+            const legGeom = new THREE.BoxGeometry(0.12, 2, 0.12);
+            leftLeg = new THREE.Mesh(legGeom, legMat);
+            leftLeg.position.set(-1.2, 1, 0);
+            deskGroup.add(leftLeg);
+
+            rightLeg = new THREE.Mesh(legGeom, legMat);
+            rightLeg.position.set(1.2, 1, 0);
+            deskGroup.add(rightLeg);
+
+            // Feet
+            const footGeom = new THREE.BoxGeometry(0.3, 0.05, 0.8);
+            const leftFoot = new THREE.Mesh(footGeom, legMat);
+            leftFoot.position.set(-1.2, 0.025, 0);
+            deskGroup.add(leftFoot);
+
+            const rightFoot = new THREE.Mesh(footGeom, legMat);
+            rightFoot.position.set(1.2, 0.025, 0);
+            deskGroup.add(rightFoot);
+
+            // Grid
+            const grid = new THREE.GridHelper(8, 20, 0x333333, 0x222222);
+            scene.add(grid);
+
+            scene.add(deskGroup);
+
+            window.addEventListener('resize', onWindowResize);
+            animate();
+        }
+
+        function onWindowResize() {
+            const container = document.getElementById('desk3dContainer');
+            if (!container || !camera || !renderer) return;
+
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+        }
+
+        function updateDeskHeight(heightInches) {
+            const normalized = (heightInches - MIN_HEIGHT_INCHES) / (MAX_HEIGHT_INCHES - MIN_HEIGHT_INCHES);
+            targetHeight = Math.max(0, Math.min(1, normalized));
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (!isUserInteracting && !controls.autoRotate) {
+                if (Date.now() - lastInteractionTime > AUTO_ROTATE_DELAY) {
+                    controls.autoRotate = true;
+                }
+            }
+
+            if (controls) controls.update();
+
+            currentDeskHeight += (targetHeight - currentDeskHeight) * 0.08;
+
+            if (deskTop && leftLeg && rightLeg) {
+                const deskY = 1.5 + currentDeskHeight * 1.0;
+                deskTop.position.y = deskY;
+
+                const legHeight = deskY;
+                leftLeg.scale.y = legHeight / 2;
+                leftLeg.position.y = legHeight / 2;
+                rightLeg.scale.y = legHeight / 2;
+                rightLeg.position.y = legHeight / 2;
+            }
+
+            if (renderer && scene && camera) {
+                renderer.render(scene, camera);
+            }
+        }
+
+        // ============================================
+        // Initialization
+        // ============================================
+        async function init() {
+            // Check Web Bluetooth support
+            if (!navigator.bluetooth) {
+                document.getElementById('browserWarning').classList.add('show');
+            }
+
+            // Initialize IndexedDB
+            try {
+                await initDB();
+            } catch (error) {
+                console.error('Failed to initialize database:', error);
+            }
+
+            // Initialize UI
+            updateUI();
+            initCharts();
+            initDesk3D();
+
+            // Load existing stats
+            await updateStats();
+        }
+
+        // Start when DOM is ready
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
